@@ -41,6 +41,10 @@ async function run() {
 
 
     // agreement collection
+    app.get('/agreements', async(req,res)=>{
+      const result = await agreementCollection.find().toArray();
+      res.send(result);
+    })
 
     app.post('/agreements', async(req,res)=>{
       const agreementItem = req.body;
