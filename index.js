@@ -41,8 +41,10 @@ async function run() {
 
 
     // agreement collection
-    app.get('/agreements', async(req,res)=>{
-      const result = await agreementCollection.find().toArray();
+    app.get('/agreements/:email', async(req,res)=>{
+      const email = req.params.email;
+      const query = {email: email};
+      const result = await agreementCollection.find(query).toArray();
       res.send(result);
     })
 
