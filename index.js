@@ -30,14 +30,30 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+    const userCollection = client.db("apartmentDb").collection("users");
     const apartmentCollection = client.db("apartmentDb").collection("apartment");
     const agreementCollection = client.db("apartmentDb").collection("agreements");
 
+    // user related api
 
     app.get('/apartment', async(req,res)=>{
         const result = await apartmentCollection.find().toArray();
         res.send(result);
     });
+    app.post('/users', async(req,res)=>{
+      const user = req.body;
+      const query = {email: user.email}
+      const existingUser = await userCollection.findOne(query);
+      if(existingUser){
+        return res.send({message:'user already exist ', insertedId: null})
+      }
+      const result = await userCollection.insertOne(user);
+      res.send(result);
+    })
+
+
+
+
 
 
     // agreement collection
@@ -50,6 +66,7 @@ async function run() {
 
     app.post('/agreements', async(req,res)=>{
       const agreementItem = req.body;
+      const query = {email: agreementItem.email}
       const result = await agreementCollection.insertOne(agreementItem);
       res.send(result);
     })
