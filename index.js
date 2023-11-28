@@ -34,6 +34,7 @@ async function run() {
     const userCollection = client.db("apartmentDb").collection("users");
     const apartmentCollection = client.db("apartmentDb").collection("apartment");
     const agreementCollection = client.db("apartmentDb").collection("agreements");
+    const paymentCollection = client.db("apartmentDb").collection("payments");
 
 
     //  token related api
@@ -88,6 +89,13 @@ async function run() {
         const result = await apartmentCollection.find().toArray();
         res.send(result);
     });
+
+    app.delete('/apartment/:id', verifyToken,verifyAdmin, async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await apartmentCollection.deleteOne(query);
+      res.send(result);
+    })
 
     app.get('/users', verifyToken, verifyAdmin,async(req,res)=>{
       console.log(req.headers);
@@ -156,7 +164,107 @@ async function run() {
       const query = {email: agreementItem.email}
       const result = await agreementCollection.insertOne(agreementItem);
       res.send(result);
+    });
+
+
+
+    // payment intent 
+    app.post('/create-payment-intent', async (req, res) => {
+      const { rent } = req.body;
+      const amount = parseInt(rent * 100);
+      console.log(amount, 'amount inside the intent')
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    });
+
+    app.get('/payments/:email',verifyToken, async(req,res)=>{
+      const query = {email: req.params.email}
+      if(req.params.email !== req.decoded.email){
+        return res.status(403).send({message: 'forbidden access'})
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
     })
+
+    app.post('/payments', async(req,res)=>{
+      const payment = req.body;
+      const paymentResult = await paymentCollection.insertOne(payment);
+      console.log('payment info',payment);
+      const query = {_id:{
+        $in: payment.apartmentId.map(id=> new ObjectId(id))
+      }};
+      const deleteResult = await cartCollection.deleteMany(query);
+
+      res.send({paymentResult, deleteResult});
+    });
+
+    // analytics system
+
+    app.get('/admin-stats', async(req,res)=>{
+      const users = await userCollection.estimatedDocumentCount();
+      const menuItems = await agreementCollection.estimatedDocumentCount();
+      const orders = await paymentCollection.estimatedDocumentCount();
+
+      const result = await paymentCollection.aggregate([
+        {
+          $group:{
+            _id: null,
+            totalRevenue:{
+              $sum: '$rent'
+            }
+          }
+        }
+       
+      ]).toArray();
+      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+      res.send({
+        users,
+        apartmentItems,
+        agreements,
+        revenue
+      })
+    })
+
+
+    // how to aggregate
+
+   app.get('/orders-stats',async (req,res)=>{
+    const result = await paymentCollection.aggregate([
+      {
+        $unwind: '$apartmentId'
+      },
+      {
+        $lookup:{
+          from: 'apartment',
+          localField: 'apartmentId',
+          foreignField: '_id',
+          as: 'apartmentItems'
+
+        }
+      },
+      {
+        $unwind: '$apartmentItems'
+      },
+      {
+        $group: {
+          _id: '$apartmentItems.category',
+          quantity: {$sum:1},
+          revenue: {$sum:'$apartmentItems.rent'}
+        }
+      }
+
+    ]).toArray();
+    res.send(result);
+   })
+     
 
 
 
