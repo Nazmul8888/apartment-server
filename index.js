@@ -1,11 +1,12 @@
 const express = require('express')
 const app = express()
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const port = process.env.port || 5000;
 
 
-// id-apartmentUser pass-2qqXuRbSVcjfxv7J
+// id-apartmentUser pass-2qqXuRbSVcjfxv7J ACCESS_TOKEN_SECRET=a6338cd7e907a7ef43d1954ec6e654e48e83326c9f16765473be9ce5edca2e7ab70a89fb94b3d528c61283dc5f1ce5ca7ae508f9aa74d598b7c413ba89a27feb
 
 
 // middleware
@@ -14,7 +15,7 @@ app.use(express.json());
 
 // mongodb site
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.6nodxbc.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,12 +35,84 @@ async function run() {
     const apartmentCollection = client.db("apartmentDb").collection("apartment");
     const agreementCollection = client.db("apartmentDb").collection("agreements");
 
+
+    //  token related api
+
+    app.post('/jwt', async(req,res)=>{
+      const user = req.body;
+      console.log(user,'user')
+      if(!user) return
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+      res.send({ token });
+    });
+
+    // middleware
+
+    const verifyToken = (req,res,next)=>{
+      // console.log('inside verify token', req.headers.authorization);
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'forbidden access '});
+      }
+
+      const token = req.headers.authorization.split(' ')[1];
+      // console.log(token)
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(err, decoded) =>{
+        if(err){
+          return res.status(401).send({message: 'forbidden access'})
+        }
+        req.decoded = decoded;
+        next();
+      })
+      
+    }
+
+      // use verify admin after verifyToken
+      const verifyAdmin = async (req, res, next) => {
+        const email = req.decoded.email;
+        const query = { email: email };
+        const user = await userCollection.findOne(query);
+        const isAdmin = user?.role === 'admin';
+        if (!isAdmin) {
+          return res.status(403).send({ message: 'forbidden access' });
+        }
+        next();
+      }
+  
+
+
+    
+
     // user related api
 
     app.get('/apartment', async(req,res)=>{
         const result = await apartmentCollection.find().toArray();
         res.send(result);
     });
+
+    app.get('/users', verifyToken, verifyAdmin,async(req,res)=>{
+      console.log(req.headers);
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get('/users/admin/:email', verifyToken, async(req,res)=>{
+      const email = req.params.email;
+      // console.log(email)
+      if(email !== req.decoded.email){
+        return res.status(403).send({message:'unauthorized access'})
+      }
+      const query = {email: email};
+      const user = await userCollection.findOne(query);
+      // console.log(user)
+      let admin = false;
+      if(user){
+        admin = user?.role === 'admin';
+      }
+      res.send({admin}); 
+
+    });
+
+
     app.post('/users', async(req,res)=>{
       const user = req.body;
       const query = {email: user.email}
@@ -49,6 +122,20 @@ async function run() {
       }
       const result = await userCollection.insertOne(user);
       res.send(result);
+    });
+
+
+    app.patch('/users/admin/:id', async(req,res)=>{
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          role: 'admin'
+        }
+      }
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+
     })
 
 
