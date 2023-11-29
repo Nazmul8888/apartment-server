@@ -294,3 +294,9 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
   console.log(`last assignment coming on port ${port}`)
 })
+
+
+// // DB_USER=apartmentUser
+// DB_PASS=2qqXuRbSVcjfxv7J
+// ACCESS_TOKEN_SECRET=a6338cd7e907a7ef43d1954ec6e654e48e83326c9f16765473be9ce5edca2e7ab70a89fb94b3d528c61283dc5f1ce5ca7ae508f9aa74d598b7c413ba89a27feb
+// STRIPE_SECRET_KEY=sk_test_51OEVndANtyZ5zA59a4Rph3kRAgk416Kf65KHgz0t37TFbh6SIJ6XFczNaNgF99A35pyxvj42SY3dSiuFy0hHzwZL00JIIzqTB7
