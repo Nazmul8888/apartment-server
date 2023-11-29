@@ -1,8 +1,11 @@
 const express = require('express')
+require('dotenv').config();
 const app = express()
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// console.log(process.env.STRIPE_SECRET_KEY)
+
 const port = process.env.port || 5000;
 
 
@@ -171,7 +174,7 @@ async function run() {
     // payment intent 
     app.post('/create-payment-intent', async (req, res) => {
       const { rent } = req.body;
-      const amount = parseInt(rent * 100);
+      const amount = 100;
       console.log(amount, 'amount inside the intent')
 
       const paymentIntent = await stripe.paymentIntents.create({
@@ -210,8 +213,8 @@ async function run() {
 
     app.get('/admin-stats', async(req,res)=>{
       const users = await userCollection.estimatedDocumentCount();
-      const menuItems = await agreementCollection.estimatedDocumentCount();
-      const orders = await paymentCollection.estimatedDocumentCount();
+      const  apartmentItems = await agreementCollection.estimatedDocumentCount();
+      const agreements = await paymentCollection.estimatedDocumentCount();
 
       const result = await paymentCollection.aggregate([
         {
