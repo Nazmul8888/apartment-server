@@ -33,7 +33,9 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
+
+
     const userCollection = client.db("apartmentDb").collection("users");
     const apartmentCollection = client.db("apartmentDb").collection("apartment");
     const agreementCollection = client.db("apartmentDb").collection("agreements");
@@ -220,19 +222,19 @@ async function run() {
         {
           $group:{
             _id: null,
-            totalRevenue:{
+            totalRent:{
               $sum: '$rent'
             }
           }
         }
        
       ]).toArray();
-      const revenue = result.length > 0 ? result[0].totalRevenue : 0;
+      const rent = result.length > 0 ? result[0].totalRent : 0;
       res.send({
         users,
         apartmentItems,
         agreements,
-        revenue
+        rent
       })
     })
 
@@ -260,7 +262,7 @@ async function run() {
         $group: {
           _id: '$apartmentItems.category',
           quantity: {$sum:1},
-          revenue: {$sum:'$apartmentItems.rent'}
+          rent: {$sum:'$apartmentItems.rent'}
         }
       }
 
@@ -277,8 +279,8 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -296,7 +298,3 @@ app.listen(port, () => {
 })
 
 
-// // DB_USER=apartmentUser
-// DB_PASS=2qqXuRbSVcjfxv7J
-// ACCESS_TOKEN_SECRET=a6338cd7e907a7ef43d1954ec6e654e48e83326c9f16765473be9ce5edca2e7ab70a89fb94b3d528c61283dc5f1ce5ca7ae508f9aa74d598b7c413ba89a27feb
-// STRIPE_SECRET_KEY=sk_test_51OEVndANtyZ5zA59a4Rph3kRAgk416Kf65KHgz0t37TFbh6SIJ6XFczNaNgF99A35pyxvj42SY3dSiuFy0hHzwZL00JIIzqTB7
